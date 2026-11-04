@@ -1576,6 +1576,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid Margin="20,18,20,14">
                             <Grid.ColumnDefinitions>
@@ -1600,7 +1601,110 @@
                         </Grid>
                         <Separator Grid.Row="1" Background="{StaticResource Border}" />
 
-                        <Grid Grid.Row="2">
+                        <Border Grid.Row="2"
+                                Margin="20,16,20,16"
+                                Padding="16"
+                                CornerRadius="9"
+                                Background="{StaticResource InputBackground}"
+                                BorderBrush="{StaticResource Border}"
+                                BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,16,0">
+                                    <TextBlock Text="DOWN LIMIT FOR ALL"
+                                               Foreground="{StaticResource SecondaryText}"
+                                               FontSize="10"
+                                               FontWeight="SemiBold" />
+                                    <Border Margin="0,7,0,0"
+                                            Style="{StaticResource LimitEditorBorderStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="1" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="AllDevicesDownloadLimitInput"
+                                                     Style="{StaticResource CompactLimitTextBoxStyle}"
+                                                     Text="0"
+                                                     AutomationProperties.Name="Download limit for all devices" />
+                                            <Border Grid.Column="1"
+                                                    Margin="0,7"
+                                                    Background="{StaticResource Border}" />
+                                            <TextBlock Grid.Column="2"
+                                                       Margin="7,0,8,0"
+                                                       VerticalAlignment="Center"
+                                                       Text="KB/s"
+                                                       Foreground="{StaticResource SecondaryText}"
+                                                       FontSize="10" />
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="0,0,16,0">
+                                    <TextBlock Text="UP LIMIT FOR ALL"
+                                               Foreground="{StaticResource SecondaryText}"
+                                               FontSize="10"
+                                               FontWeight="SemiBold" />
+                                    <Border Margin="0,7,0,0"
+                                            Style="{StaticResource LimitEditorBorderStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="1" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="AllDevicesUploadLimitInput"
+                                                     Style="{StaticResource CompactLimitTextBoxStyle}"
+                                                     Text="0"
+                                                     AutomationProperties.Name="Upload limit for all devices" />
+                                            <Border Grid.Column="1"
+                                                    Margin="0,7"
+                                                    Background="{StaticResource Border}" />
+                                            <TextBlock Grid.Column="2"
+                                                       Margin="7,0,8,0"
+                                                       VerticalAlignment="Center"
+                                                       Text="KB/s"
+                                                       Foreground="{StaticResource SecondaryText}"
+                                                       FontSize="10" />
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                                <Button x:Name="ApplyLimitsToAllDevicesButton"
+                                        Grid.Column="2"
+                                        MinWidth="126"
+                                        MinHeight="38"
+                                        Padding="16,9"
+                                        Margin="0,17,0,0"
+                                        VerticalAlignment="Top"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Click="ApplyLimitsToAllDevicesButton_OnClick"
+                                        Content="Apply to all devices" />
+                                <StackPanel Grid.Row="1"
+                                            Grid.ColumnSpan="4"
+                                            Margin="2,11,0,0">
+                                    <TextBlock Text="Replaces every device's limits and applies to new devices when they join. Edit a device below to give it its own limit. 0 means unlimited."
+                                               Foreground="{StaticResource SecondaryText}"
+                                               FontSize="10"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock x:Name="AllDevicesLimitValidationText"
+                                               Margin="0,5,0,0"
+                                               Text="Enter both limits as whole KB/s values. 0 means unlimited."
+                                               Foreground="{StaticResource Accent}"
+                                               FontSize="10"
+                                               Visibility="Collapsed" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Grid Grid.Row="3">
                             <DataGrid x:Name="DeviceGrid"
                                       MinHeight="270"
                                       MaxHeight="430"
@@ -1791,7 +1895,7 @@
                             </StackPanel>
                         </Grid>
 
-                        <Border Grid.Row="3"
+                        <Border Grid.Row="4"
                                 Padding="16,12"
                                 Background="{StaticResource InputBackground}"
                                 BorderBrush="{StaticResource Border}"

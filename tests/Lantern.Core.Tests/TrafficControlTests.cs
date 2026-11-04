@@ -59,6 +59,41 @@ public sealed class TrafficControlTests
     }
 
     [Fact]
+    public void TrafficPolicy_DefaultLimitsApplyToDevicesWithoutTheirOwnRule()
+    {
+        var policy = new TrafficPolicy(new ManualClock().Read);
+        policy.SetDefaultLimits(1, 0);
+
+        Assert.Equal(new TrafficRule(false, 1, 0), policy.GetRule("00:11:22:33:44:55"));
+        Assert.True(policy.ShouldForward("00:11:22:33:44:55", TrafficDirection.Download, 1_500));
+        Assert.False(policy.ShouldForward("00:11:22:33:44:55", TrafficDirection.Download, 1));
+        Assert.True(policy.ShouldForward("00:11:22:33:44:55", TrafficDirection.Upload, 10_000_000));
+    }
+
+    [Fact]
+    public void TrafficPolicy_DeviceRuleOverridesDefaultLimits()
+    {
+        var policy = new TrafficPolicy(new ManualClock().Read);
+        policy.SetDefaultLimits(1, 1);
+        policy.SetRule("00:11:22:33:44:55", new TrafficRule(false, 0, 0));
+
+        Assert.True(policy.ShouldForward("00:11:22:33:44:55", TrafficDirection.Download, 10_000_000));
+    }
+
+    [Fact]
+    public void TrafficPolicy_ChangedDefaultLimitsTakeEffectImmediately()
+    {
+        var policy = new TrafficPolicy(new ManualClock().Read);
+        policy.SetDefaultLimits(1, 0);
+        Assert.True(policy.ShouldForward("00:11:22:33:44:55", TrafficDirection.Download, 1_500));
+        Assert.False(policy.ShouldForward("00:11:22:33:44:55", TrafficDirection.Download, 1));
+
+        policy.SetDefaultLimits(0, 0);
+
+        Assert.True(policy.ShouldForward("00:11:22:33:44:55", TrafficDirection.Download, 10_000_000));
+    }
+
+    [Fact]
     public void TrafficPolicy_DomainBlocksAreNormalizedAndScopedToOneDevice()
     {
         const string blockedMac = "E2-61-19-0D-BD-54";

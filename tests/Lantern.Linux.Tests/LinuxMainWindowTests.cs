@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Xml.Linq;
 using Lantern.App.Services;
 using Lantern.App.ViewModels;
+using Lantern.Core.Control;
 using Lantern.Core.Devices;
 using Lantern.Core.Networking;
 
@@ -213,6 +214,7 @@ public sealed class LinuxMainWindowTests
                 0,
                 0),
             null,
+            new TrafficRule(false, 0, 0),
             false,
             "Online");
         device.SetPresence(true);
@@ -248,6 +250,7 @@ public sealed class LinuxMainWindowTests
                 0,
                 0),
             null,
+            new TrafficRule(false, 0, 0),
             false,
             "Online");
         device.SetPresence(true);

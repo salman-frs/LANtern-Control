@@ -586,15 +586,29 @@
               </Border>
 
               <Border Classes="card">
-                <Grid RowDefinitions="Auto,Auto,Auto">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto">
                   <Grid Margin="20,17" ColumnDefinitions="*,Auto">
                     <StackPanel><TextBlock Text="NETWORK CLIENTS" Classes="eyebrow" Foreground="#A89095"/><TextBlock Text="Connected devices" FontSize="18" FontWeight="Bold" Margin="0,4,0,0"/></StackPanel>
                     <TextBlock x:Name="DeviceCountLabel" Grid.Column="1" VerticalAlignment="Center" Foreground="#A89095" />
                   </Grid>
-                  <Grid Grid.Row="1" Height="42" Background="#0C0B0D" ColumnDefinitions="2.2*,1.25*,1*,1*,1.25*,1.25*,1.05*">
+                  <Border Grid.Row="1" Margin="20,0,20,16" Padding="16" CornerRadius="9" Background="#0C0B0D" BorderBrush="#2B2226" BorderThickness="1">
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,Auto,Auto,*">
+                      <StackPanel Margin="0,0,16,0">
+                        <TextBlock Text="DOWN LIMIT FOR ALL" Classes="eyebrow" Foreground="#A89095" />
+                        <Border Width="150" Margin="0,7,0,0" Classes="limit-editor"><Grid ColumnDefinitions="*,1,Auto"><TextBox x:Name="AllDevicesDownloadLimitTextBox" Text="0" Padding="11,8" Background="Transparent" BorderThickness="0"/><Border Grid.Column="1" Margin="0,7" Background="#2B2226"/><TextBlock Grid.Column="2" Margin="7,0,8,0" Text="KB/s" Foreground="#A89095" FontSize="9" VerticalAlignment="Center"/></Grid></Border>
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Margin="0,0,16,0">
+                        <TextBlock Text="UP LIMIT FOR ALL" Classes="eyebrow" Foreground="#A89095" />
+                        <Border Width="150" Margin="0,7,0,0" Classes="limit-editor"><Grid ColumnDefinitions="*,1,Auto"><TextBox x:Name="AllDevicesUploadLimitTextBox" Text="0" Padding="11,8" Background="Transparent" BorderThickness="0"/><Border Grid.Column="1" Margin="0,7" Background="#2B2226"/><TextBlock Grid.Column="2" Margin="7,0,8,0" Text="KB/s" Foreground="#A89095" FontSize="9" VerticalAlignment="Center"/></Grid></Border>
+                      </StackPanel>
+                      <Button Grid.Column="2" Classes="action primary" Margin="0,17,0,0" Content="Apply to all devices" Click="ApplyLimitsToAllDevicesButton_OnClick" />
+                      <TextBlock Grid.Row="1" Grid.ColumnSpan="4" Margin="2,11,0,0" Text="Replaces every device's limits and applies to new devices when they join. Edit a device below to give it its own limit. 0 means unlimited." Foreground="#A89095" FontSize="10" TextWrapping="Wrap" />
+                    </Grid>
+                  </Border>
+                  <Grid Grid.Row="2" Height="42" Background="#0C0B0D" ColumnDefinitions="2.2*,1.25*,1*,1*,1.25*,1.25*,1.05*">
                     <TextBlock Margin="20,0,0,0" Text="DEVICE" VerticalAlignment="Center" Classes="eyebrow" Foreground="#A89095"/><TextBlock Grid.Column="1" Text="IP ADDRESS" VerticalAlignment="Center" Classes="eyebrow" Foreground="#A89095"/><TextBlock Grid.Column="2" Text="DOWNLOAD" VerticalAlignment="Center" Classes="eyebrow" Foreground="#A89095"/><TextBlock Grid.Column="3" Text="UPLOAD" VerticalAlignment="Center" Classes="eyebrow" Foreground="#A89095"/><TextBlock Grid.Column="4" Text="DOWN LIMIT" VerticalAlignment="Center" Classes="eyebrow" Foreground="#A89095"/><TextBlock Grid.Column="5" Text="UP LIMIT" VerticalAlignment="Center" Classes="eyebrow" Foreground="#A89095"/><TextBlock Grid.Column="6" Text="INTERNET" VerticalAlignment="Center" Classes="eyebrow" Foreground="#A89095"/>
                   </Grid>
-                  <ItemsControl Grid.Row="2" ItemsSource="{Binding Devices}">
+                  <ItemsControl Grid.Row="3" ItemsSource="{Binding Devices}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
                         <Border MinHeight="68" BorderBrush="#2B2226" BorderThickness="0,0,0,1">
@@ -621,7 +635,7 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <StackPanel x:Name="EmptyDeviceText" Grid.Row="2" Margin="0,52" HorizontalAlignment="Center" Spacing="8">
+                  <StackPanel x:Name="EmptyDeviceText" Grid.Row="3" Margin="0,52" HorizontalAlignment="Center" Spacing="8">
                     <Border Width="46" Height="46" HorizontalAlignment="Center" CornerRadius="13" Background="#171317">
                       <Path Width="22" Height="22" Data="M2,3 H18 V14 H2 Z M7,18 H13 M10,14 V18" Stroke="#D72C43" StrokeThickness="1.7" Stretch="Uniform" />
                     </Border>

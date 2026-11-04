@@ -6,6 +6,10 @@ public sealed class AppSettings
 
     public DateTimeOffset? LastUpdateCheckUtc { get; set; }
 
+    public int DefaultDownloadKiloBytesPerSecond { get; set; }
+
+    public int DefaultUploadKiloBytesPerSecond { get; set; }
+
     public Dictionary<string, DevicePreferences> Devices { get; init; } =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -22,9 +26,9 @@ public sealed class DevicePreferences
 
     public string? LearnedHostName { get; set; }
 
-    public int DownloadKiloBytesPerSecond { get; set; }
+    public int? DownloadKiloBytesPerSecond { get; set; }
 
-    public int UploadKiloBytesPerSecond { get; set; }
+    public int? UploadKiloBytesPerSecond { get; set; }
 
     public bool PauseInternet { get; set; }
 

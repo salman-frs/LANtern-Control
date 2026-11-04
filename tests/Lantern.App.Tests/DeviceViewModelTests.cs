@@ -10,8 +10,8 @@ using System.Windows.Media;
 using System.Windows.Shell;
 using Lantern.App;
 using Lantern.App.ViewModels;
+using Lantern.Core.Control;
 using Lantern.Core.Devices;
-using Lantern.Core.Settings;
 using Xunit;
 
 namespace Lantern.App.Tests;
@@ -328,6 +328,7 @@ public sealed class DeviceViewModelTests
                         device.Initialize(
                             snapshot,
                             null,
+                            new TrafficRule(false, 0, 0),
                             isGateway,
                             isGateway ? "Gateway — protected" : "Online");
                         return device;
@@ -430,14 +431,9 @@ public sealed class DeviceViewModelTests
             now,
             0,
             0);
-        var preferences = new DevicePreferences
-        {
-            DownloadKiloBytesPerSecond = 250,
-            UploadKiloBytesPerSecond = 75,
-        };
         var viewModel = new DeviceViewModel(_ => Task.CompletedTask);
 
-        viewModel.Initialize(snapshot, preferences, false, "Online");
+        viewModel.Initialize(snapshot, null, new TrafficRule(false, 250, 75), false, "Online");
 
         Assert.Equal(250, viewModel.DownloadLimit);
         Assert.Equal(75, viewModel.UploadLimit);
@@ -457,7 +453,7 @@ public sealed class DeviceViewModelTests
             375);
         var viewModel = new DeviceViewModel(_ => Task.CompletedTask);
 
-        viewModel.Initialize(snapshot, null, false, "Online");
+        viewModel.Initialize(snapshot, null, new TrafficRule(false, 0, 0), false, "Online");
 
         Assert.Equal(1_250, viewModel.DownloadBytesPerSecond);
         Assert.Equal(375, viewModel.UploadBytesPerSecond);
@@ -482,7 +478,7 @@ public sealed class DeviceViewModelTests
                 changes++;
                 return Task.CompletedTask;
             });
-        viewModel.Initialize(snapshot, null, false, "Online");
+        viewModel.Initialize(snapshot, null, new TrafficRule(false, 0, 0), false, "Online");
 
         viewModel.EditableName = "  Omar's phone  ";
         viewModel.Update(snapshot with { HostName = "Android" }, null);
@@ -505,7 +501,7 @@ public sealed class DeviceViewModelTests
             0,
             0);
         var viewModel = new DeviceViewModel(_ => Task.CompletedTask);
-        viewModel.Initialize(snapshot, null, false, "Online");
+        viewModel.Initialize(snapshot, null, new TrafficRule(false, 0, 0), false, "Online");
 
         viewModel.SetPresence(false);
 
@@ -525,13 +521,9 @@ public sealed class DeviceViewModelTests
             now,
             0,
             0);
-        var preferences = new DevicePreferences
-        {
-            DownloadKiloBytesPerSecond = 500,
-        };
         var viewModel = new DeviceViewModel(_ => Task.CompletedTask);
 
-        viewModel.Initialize(snapshot, preferences, true, "Gateway — protected");
+        viewModel.Initialize(snapshot, null, new TrafficRule(false, 500, 0), true, "Gateway — protected");
 
         Assert.False(viewModel.HasActiveRule);
     }
