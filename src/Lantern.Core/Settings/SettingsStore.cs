@@ -161,6 +161,8 @@ public sealed class SettingsStore
         {
             DisableUpdateChecks = settings.DisableUpdateChecks,
             LastUpdateCheckUtc = settings.LastUpdateCheckUtc?.ToUniversalTime(),
+            DefaultDownloadKiloBytesPerSecond = Math.Max(0, settings.DefaultDownloadKiloBytesPerSecond),
+            DefaultUploadKiloBytesPerSecond = Math.Max(0, settings.DefaultUploadKiloBytesPerSecond),
         };
         foreach (var pair in settings.Devices)
         {
@@ -182,12 +184,8 @@ public sealed class SettingsStore
                 LearnedHostName = string.IsNullOrWhiteSpace(pair.Value.LearnedHostName)
                     ? null
                     : pair.Value.LearnedHostName.Trim(),
-                DownloadKiloBytesPerSecond = Math.Max(
-                    0,
-                    pair.Value.DownloadKiloBytesPerSecond),
-                UploadKiloBytesPerSecond = Math.Max(
-                    0,
-                    pair.Value.UploadKiloBytesPerSecond),
+                DownloadKiloBytesPerSecond = NormalizeLimit(pair.Value.DownloadKiloBytesPerSecond),
+                UploadKiloBytesPerSecond = NormalizeLimit(pair.Value.UploadKiloBytesPerSecond),
                 PauseInternet = pair.Value.PauseInternet,
                 LastKnownIp = NormalizeIpv4(pair.Value.LastKnownIp),
             };
@@ -277,6 +275,9 @@ public sealed class SettingsStore
 
         return normalized;
     }
+
+    private static int? NormalizeLimit(int? kiloBytesPerSecond) =>
+        kiloBytesPerSecond is { } value ? Math.Max(0, value) : null;
 
     private static string? NormalizeIpv4(string? value) =>
         IPAddress.TryParse(value, out var address) &&

@@ -54,18 +54,28 @@ public sealed class LinuxDashboardState
 
     public void ApplyTrafficRule(string macAddress, TrafficRule rule)
     {
-        var macKey = TrafficPolicy.NormalizeMac(macAddress);
-        var normalized = rule.Normalize();
-        if (!settings.Devices.TryGetValue(macKey, out var preferences))
-        {
-            preferences = new DevicePreferences();
-            settings.Devices[macKey] = preferences;
-        }
+        DeviceTrafficRules.Save(settings, macAddress, rule);
+        policy.SetRule(macAddress, rule.Normalize());
+    }
 
-        preferences.DownloadKiloBytesPerSecond = normalized.DownloadKiloBytesPerSecond;
-        preferences.UploadKiloBytesPerSecond = normalized.UploadKiloBytesPerSecond;
-        preferences.PauseInternet = normalized.PauseInternet;
-        policy.SetRule(macKey, normalized);
+    public void ApplyLimitsToAllDevices(int downloadKiloBytesPerSecond, int uploadKiloBytesPerSecond)
+    {
+        DeviceTrafficRules.ApplyLimitsToAllDevices(
+            settings,
+            downloadKiloBytesPerSecond,
+            uploadKiloBytesPerSecond);
+        ApplySavedTrafficRules();
+    }
+
+    public void ApplySavedTrafficRules()
+    {
+        policy.SetDefaultLimits(
+            settings.DefaultDownloadKiloBytesPerSecond,
+            settings.DefaultUploadKiloBytesPerSecond);
+        foreach (var macKey in settings.Devices.Keys)
+        {
+            policy.SetRule(macKey, DeviceTrafficRules.Resolve(settings, macKey));
+        }
     }
 
     public void RemoveDomain(string macAddress, string domain)

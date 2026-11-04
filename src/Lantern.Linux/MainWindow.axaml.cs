@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
 using Avalonia;
@@ -30,6 +31,7 @@ public partial class MainWindow : Window
     private static readonly IBrush IdleBrush = new SolidColorBrush(Color.Parse("#A89095"));
     private static readonly IBrush AccentBrush = new SolidColorBrush(Color.Parse("#D72C43"));
     private static readonly IBrush InactiveNavBrush = new SolidColorBrush(Color.Parse("#A89095"));
+    private static readonly TrafficRule UnrestrictedRule = new(false, 0, 0);
     private readonly bool demoMode;
     private readonly DeviceRegistry registry = new();
     private readonly TrafficPolicy policy = new();
@@ -98,6 +100,7 @@ public partial class MainWindow : Window
         settings = await settingsStore.LoadAsync();
         dashboardState = new LinuxDashboardState(settings, policy);
         ApplyAllSavedRules();
+        ShowDefaultLimits();
         LoadDomainRulesFromSettings();
         LoadAdapters();
         refreshTimer.Start();
@@ -326,11 +329,13 @@ public partial class MainWindow : Window
             settings.Devices.TryGetValue(macKey, out var preferences);
             if (!devicesByMac.TryGetValue(macKey, out var device))
             {
+                var isProtected = IsProtected(snapshot);
                 device = new DeviceViewModel(OnDeviceRuleChangedAsync);
                 device.Initialize(
                     snapshot,
-                    preferences,
-                    IsProtected(snapshot),
+                    preferences?.Alias,
+                    isProtected ? UnrestrictedRule : DeviceTrafficRules.Resolve(settings, macKey),
+                    isProtected,
                     IsGateway(snapshot) ? "Gateway — protected" : "This computer — protected");
                 devicesByMac[macKey] = device;
             }
@@ -431,18 +436,62 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ApplyAllSavedRules()
+    private async void ApplyLimitsToAllDevicesButton_OnClick(object? sender, RoutedEventArgs eventArgs)
     {
-        foreach (var pair in settings.Devices)
+        if (!TryReadLimit(AllDevicesDownloadLimitTextBox.Text, out var downloadLimit) ||
+            !TryReadLimit(AllDevicesUploadLimitTextBox.Text, out var uploadLimit))
         {
-            policy.SetRule(
-                pair.Key,
-                new TrafficRule(
-                    pair.Value.PauseInternet,
-                    pair.Value.DownloadKiloBytesPerSecond,
-                    pair.Value.UploadKiloBytesPerSecond));
+            SetStatus("Enter both limits as whole KB/s values. 0 means unlimited.");
+            return;
         }
 
+        try
+        {
+            dashboardState.ApplyLimitsToAllDevices(downloadLimit, uploadLimit);
+            var controllableDevices = devicesByMac.Values.Where(device => device.CanControl).ToArray();
+            foreach (var device in controllableDevices)
+            {
+                device.ShowRule(DeviceTrafficRules.Resolve(settings, device.MacKey));
+            }
+
+            if (demoMode)
+            {
+                RefreshDemoDashboard();
+            }
+            else
+            {
+                foreach (var device in controllableDevices)
+                {
+                    await engine.ApplyRuleAsync(device.MacKey, DeviceTrafficRules.Resolve(settings, device.MacKey));
+                }
+
+                await settingsStore.SaveAsync(settings);
+                RefreshDashboard();
+            }
+
+            ShowDefaultLimits();
+            SetStatus(downloadLimit == 0 && uploadLimit == 0
+                ? "Removed the bandwidth limits from every device."
+                : $"Every device, including new ones, is now limited to ↓ {downloadLimit} KB/s and ↑ {uploadLimit} KB/s.");
+        }
+        catch (Exception exception)
+        {
+            SetStatus($"Could not apply the limit to all devices: {exception.Message}");
+        }
+    }
+
+    private void ShowDefaultLimits()
+    {
+        AllDevicesDownloadLimitTextBox.Text = settings.DefaultDownloadKiloBytesPerSecond.ToString(CultureInfo.InvariantCulture);
+        AllDevicesUploadLimitTextBox.Text = settings.DefaultUploadKiloBytesPerSecond.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static bool TryReadLimit(string? text, out int kiloBytesPerSecond) =>
+        int.TryParse(text?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out kiloBytesPerSecond);
+
+    private void ApplyAllSavedRules()
+    {
+        dashboardState.ApplySavedTrafficRules();
         foreach (var pair in settings.BlockedDomains)
         {
             policy.SetBlockedDomains(pair.Key, pair.Value);

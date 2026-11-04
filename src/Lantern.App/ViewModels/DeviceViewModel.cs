@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Lantern.Core.Control;
 using Lantern.Core.Devices;
-using Lantern.Core.Settings;
 
 namespace Lantern.App.ViewModels;
 
@@ -179,23 +179,30 @@ public sealed class DeviceViewModel : INotifyPropertyChanged
 
     public void Initialize(
         DeviceSnapshot snapshot,
-        DevicePreferences? preferences,
+        string? savedAlias,
+        TrafficRule rule,
         bool isProtectedDevice,
         string protectedDeviceReason)
     {
         MacKey = snapshot.MacAddress.ToString();
         MacAddress = FormatMac(MacKey);
-        alias = string.IsNullOrWhiteSpace(preferences?.Alias) ? null : preferences.Alias.Trim();
-        downloadLimit = Math.Max(0, preferences?.DownloadKiloBytesPerSecond ?? 0);
-        uploadLimit = Math.Max(0, preferences?.UploadKiloBytesPerSecond ?? 0);
-        pauseInternet = !isProtectedDevice && (preferences?.PauseInternet ?? false);
+        alias = string.IsNullOrWhiteSpace(savedAlias) ? null : savedAlias.Trim();
+        IsProtected = isProtectedDevice;
+        ProtectedReason = protectedDeviceReason;
+        ShowRule(rule);
+        Update(snapshot, savedAlias);
+    }
+
+    public void ShowRule(TrafficRule rule)
+    {
+        var normalized = rule.Normalize();
+        downloadLimit = normalized.DownloadKiloBytesPerSecond;
+        uploadLimit = normalized.UploadKiloBytesPerSecond;
+        pauseInternet = !IsProtected && normalized.PauseInternet;
         OnPropertyChanged(nameof(DownloadLimit));
         OnPropertyChanged(nameof(UploadLimit));
         OnPropertyChanged(nameof(PauseInternet));
         OnPropertyChanged(nameof(HasActiveRule));
-        IsProtected = isProtectedDevice;
-        ProtectedReason = protectedDeviceReason;
-        Update(snapshot, preferences?.Alias);
     }
 
     public void Update(DeviceSnapshot snapshot, string? alias)

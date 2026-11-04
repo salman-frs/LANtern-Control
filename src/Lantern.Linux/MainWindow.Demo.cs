@@ -53,7 +53,12 @@ public partial class MainWindow
             };
             settings.Devices[seed.MacKey] = preferences;
             var device = new DeviceViewModel(OnDeviceRuleChangedAsync);
-            device.Initialize(CreateDemoSnapshot(seed, now, seed.Download, seed.Upload), preferences, false, "Online");
+            device.Initialize(
+                CreateDemoSnapshot(seed, now, seed.Download, seed.Upload),
+                preferences.Alias,
+                DeviceTrafficRules.Resolve(settings, seed.MacKey),
+                false,
+                "Online");
             device.SetPresence(true);
             devicesByMac[seed.MacKey] = device;
             Devices.Add(device);
@@ -64,7 +69,8 @@ public partial class MainWindow
         var gateway = new DeviceViewModel(OnDeviceRuleChangedAsync);
         gateway.Initialize(
             CreateDemoSnapshot(gatewaySeed, now, 0, 0),
-            new DevicePreferences { Alias = "Gateway", LastKnownIp = gatewaySeed.IpAddress },
+            "Gateway",
+            UnrestrictedRule,
             true,
             "Gateway — protected");
         gateway.SetPresence(true);

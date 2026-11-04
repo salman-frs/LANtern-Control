@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -24,6 +25,7 @@ namespace Lantern.App;
 public partial class MainWindow : Window
 {
     private const int MaxWebsiteActivityRows = 250;
+    private static readonly TrafficRule UnrestrictedRule = new(false, 0, 0);
     private static readonly HttpClient UpdateHttpClient = new()
     {
         Timeout = TimeSpan.FromSeconds(5),
@@ -114,6 +116,7 @@ public partial class MainWindow : Window
     private async void MainWindow_OnLoaded(object sender, RoutedEventArgs eventArgs)
     {
         settings = await settingsStore.LoadAsync();
+        ShowDefaultLimits();
         LoadDomainRulesFromSettings();
         var adapters = WindowsAdapterService.GetUsableAdapters();
         AdapterSelector.ItemsSource = adapters;
@@ -805,7 +808,8 @@ public partial class MainWindow : Window
                 viewModel = new DeviceViewModel(OnDeviceRuleChangedAsync);
                 viewModel.Initialize(
                     snapshot,
-                    preferences,
+                    preferences?.Alias,
+                    isGateway ? UnrestrictedRule : DeviceTrafficRules.Resolve(settings, key),
                     isGateway,
                     isGateway ? "Gateway — protected" : "Online");
                 deviceIndex[key] = viewModel;
@@ -846,25 +850,24 @@ public partial class MainWindow : Window
             return;
         }
 
-        var preferences = settings.Devices.TryGetValue(device.MacKey, out var existing)
-            ? existing
-            : settings.Devices[device.MacKey] = new DevicePreferences();
         var rule = new TrafficRule(
                 device.PauseInternet,
                 device.DownloadLimit,
                 device.UploadLimit)
             .ForForwardingMode();
-        var ruleChanged =
-            preferences.DownloadKiloBytesPerSecond != rule.DownloadKiloBytesPerSecond ||
-            preferences.UploadKiloBytesPerSecond != rule.UploadKiloBytesPerSecond ||
-            preferences.PauseInternet != rule.PauseInternet;
+        var ruleChanged = rule != DeviceTrafficRules.Resolve(settings, device.MacKey);
+        if (ruleChanged)
+        {
+            DeviceTrafficRules.Save(settings, device.MacKey, rule);
+        }
+
+        var preferences = settings.Devices.TryGetValue(device.MacKey, out var existing)
+            ? existing
+            : settings.Devices[device.MacKey] = new DevicePreferences();
         var aliasChanged = !string.Equals(
             preferences.Alias,
             device.Alias,
             StringComparison.Ordinal);
-        preferences.DownloadKiloBytesPerSecond = rule.DownloadKiloBytesPerSecond;
-        preferences.UploadKiloBytesPerSecond = rule.UploadKiloBytesPerSecond;
-        preferences.PauseInternet = rule.PauseInternet;
         preferences.Alias = device.Alias;
 
         try
@@ -895,17 +898,64 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void ApplyLimitsToAllDevicesButton_OnClick(object sender, RoutedEventArgs eventArgs)
+    {
+        if (!TryReadLimit(AllDevicesDownloadLimitInput.Text, out var downloadLimit) ||
+            !TryReadLimit(AllDevicesUploadLimitInput.Text, out var uploadLimit))
+        {
+            AllDevicesLimitValidationText.Visibility = Visibility.Visible;
+            return;
+        }
+
+        AllDevicesLimitValidationText.Visibility = Visibility.Collapsed;
+        DeviceTrafficRules.ApplyLimitsToAllDevices(settings, downloadLimit, uploadLimit);
+        policy.SetDefaultLimits(downloadLimit, uploadLimit);
+        try
+        {
+            foreach (var macKey in settings.Devices.Keys.ToArray())
+            {
+                var rule = DeviceTrafficRules.Resolve(settings, macKey).ForForwardingMode();
+                await engine.ApplyRuleAsync(macKey, rule);
+                if (deviceIndex.TryGetValue(macKey, out var device) && device.CanControl)
+                {
+                    device.ShowRule(rule);
+                }
+            }
+
+            await settingsStore.SaveAsync(settings);
+            settingsDirty = false;
+            ShowDefaultLimits();
+            RefreshDashboardSummary(addTrafficSample: false);
+            DetailStatusText.Text = downloadLimit == 0 && uploadLimit == 0
+                ? "Removed the bandwidth limits from every device."
+                : $"Every device, including new ones, is now limited to ↓ {downloadLimit} KB/s and ↑ {uploadLimit} KB/s.";
+        }
+        catch (Exception exception) when (
+            exception is IOException or InvalidOperationException)
+        {
+            DetailStatusText.Text = exception.Message;
+        }
+    }
+
+    private void ShowDefaultLimits()
+    {
+        AllDevicesDownloadLimitInput.Text =
+            settings.DefaultDownloadKiloBytesPerSecond.ToString(CultureInfo.InvariantCulture);
+        AllDevicesUploadLimitInput.Text =
+            settings.DefaultUploadKiloBytesPerSecond.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static bool TryReadLimit(string? text, out int kiloBytesPerSecond) =>
+        int.TryParse(text?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out kiloBytesPerSecond);
+
     private void ApplyAllSavedRules()
     {
-        foreach (var pair in settings.Devices)
+        policy.SetDefaultLimits(
+            settings.DefaultDownloadKiloBytesPerSecond,
+            settings.DefaultUploadKiloBytesPerSecond);
+        foreach (var macKey in settings.Devices.Keys)
         {
-            policy.SetRule(
-                pair.Key,
-                new TrafficRule(
-                    pair.Value.PauseInternet,
-                    pair.Value.DownloadKiloBytesPerSecond,
-                    pair.Value.UploadKiloBytesPerSecond)
-                    .ForForwardingMode());
+            policy.SetRule(macKey, DeviceTrafficRules.Resolve(settings, macKey).ForForwardingMode());
         }
 
         foreach (var pair in settings.BlockedDomains)
@@ -1000,11 +1050,7 @@ public partial class MainWindow : Window
                 policy.RemoveRule(identity.PreviousMacKey);
             }
 
-            var rule = new TrafficRule(
-                    identity.Preferences.PauseInternet,
-                    identity.Preferences.DownloadKiloBytesPerSecond,
-                    identity.Preferences.UploadKiloBytesPerSecond)
-                .ForForwardingMode();
+            var rule = DeviceTrafficRules.Resolve(settings, identity.MacKey).ForForwardingMode();
             await engine.ApplyRuleAsync(identity.MacKey, rule);
             UpdateKnownDeviceHints();
             await settingsStore.SaveAsync(settings);

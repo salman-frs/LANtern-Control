@@ -1,3 +1,4 @@
+using Lantern.Core.Control;
 using Lantern.Core.Settings;
 
 namespace Lantern.Core.Tests;
@@ -38,6 +39,44 @@ public sealed class SettingsStoreTests
             Assert.Equal(100, saved.Value.UploadKiloBytesPerSecond);
             Assert.True(saved.Value.PauseInternet);
             Assert.Equal("192.168.31.213", saved.Value.LastKnownIp);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task SaveAndLoad_KeepsTheLimitForAllDevicesAndWhichDevicesFollowIt()
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            var store = new SettingsStore(directory);
+            var settings = new AppSettings
+            {
+                DefaultDownloadKiloBytesPerSecond = 2_500,
+                DefaultUploadKiloBytesPerSecond = 625,
+                Devices =
+                {
+                    ["E261190DBD54"] = new DevicePreferences { Alias = "Living room" },
+                    ["0E4F69CCE4F0"] = new DevicePreferences
+                    {
+                        DownloadKiloBytesPerSecond = 0,
+                        UploadKiloBytesPerSecond = 0,
+                    },
+                },
+            };
+
+            await store.SaveAsync(settings);
+            var loaded = await store.LoadAsync();
+
+            Assert.Equal(
+                new TrafficRule(false, 2_500, 625),
+                DeviceTrafficRules.Resolve(loaded, "E261190DBD54"));
+            Assert.Equal(
+                new TrafficRule(false, 0, 0),
+                DeviceTrafficRules.Resolve(loaded, "0E4F69CCE4F0"));
         }
         finally
         {

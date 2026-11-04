@@ -54,6 +54,30 @@ public sealed class LinuxDashboardStateTests
     }
 
     [Fact]
+    public void ApplyLimitsToAllDevices_LimitsSavedAndNewDevicesInTheLivePolicy()
+    {
+        var settings = new AppSettings
+        {
+            Devices =
+            {
+                ["0E4F69CCE4F0"] = new DevicePreferences
+                {
+                    DownloadKiloBytesPerSecond = 100,
+                    UploadKiloBytesPerSecond = 50,
+                },
+            },
+        };
+        var policy = new TrafficPolicy();
+        var state = new LinuxDashboardState(settings, policy);
+        state.ApplySavedTrafficRules();
+
+        state.ApplyLimitsToAllDevices(2_500, 625);
+
+        Assert.Equal(new TrafficRule(false, 2_500, 625), policy.GetRule("0E4F69CCE4F0"));
+        Assert.Equal(new TrafficRule(false, 2_500, 625), policy.GetRule("AA7051600355"));
+    }
+
+    [Fact]
     public void RemoveDomain_UpdatesPersistenceAndLivePolicy()
     {
         var settings = new AppSettings();

@@ -57,8 +57,8 @@ public static class DeviceIdentityTracker
         current is null ||
         (string.IsNullOrWhiteSpace(current.Alias) &&
          string.IsNullOrWhiteSpace(current.LearnedHostName) &&
-         current.DownloadKiloBytesPerSecond == 0 &&
-         current.UploadKiloBytesPerSecond == 0 &&
+         current.DownloadKiloBytesPerSecond is null or 0 &&
+         current.UploadKiloBytesPerSecond is null or 0 &&
          !current.PauseInternet);
 
     private static string NormalizeHostName(string value)

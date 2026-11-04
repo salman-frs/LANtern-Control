@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.NetworkInformation;
 using Lantern.App.ViewModels;
+using Lantern.Core.Control;
 using Lantern.Core.Devices;
-using Lantern.Core.Settings;
 using Xunit;
 
 namespace Lantern.App.Tests;
@@ -19,7 +19,7 @@ public sealed class DashboardSummaryTests
             9_000,
             3_000,
             isProtected: true,
-            new DevicePreferences { DownloadKiloBytesPerSecond = 500 });
+            new TrafficRule(false, 500, 0));
         var phone = CreateDevice(
             "0E4F69CCE4F0",
             "192.168.31.213",
@@ -27,7 +27,7 @@ public sealed class DashboardSummaryTests
             2_000,
             400,
             isProtected: false,
-            new DevicePreferences { UploadKiloBytesPerSecond = 100 });
+            new TrafficRule(false, 0, 100));
         var laptop = CreateDevice(
             "345A6063C052",
             "192.168.31.61",
@@ -111,7 +111,7 @@ public sealed class DashboardSummaryTests
         double download,
         double upload,
         bool isProtected,
-        DevicePreferences? preferences)
+        TrafficRule? rule)
     {
         var now = DateTimeOffset.Parse("2026-07-31T00:00:00Z");
         var snapshot = new DeviceSnapshot(
@@ -125,7 +125,8 @@ public sealed class DashboardSummaryTests
         var viewModel = new DeviceViewModel(_ => Task.CompletedTask);
         viewModel.Initialize(
             snapshot,
-            preferences,
+            null,
+            rule ?? new TrafficRule(false, 0, 0),
             isProtected,
             isProtected ? "Gateway — protected" : "Online");
         return viewModel;

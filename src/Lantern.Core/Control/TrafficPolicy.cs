@@ -14,28 +14,32 @@ public sealed class TrafficPolicy
 {
     private readonly ConcurrentDictionary<string, DeviceLimiters> rules =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, DeviceLimiters> defaultLimiters =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, string[]> blockedDomains =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Func<double>? clockSeconds;
+    private volatile TrafficRule defaultRule = new(false, 0, 0);
 
     public TrafficPolicy(Func<double>? clockSeconds = null)
     {
         this.clockSeconds = clockSeconds;
     }
 
-    public void SetRule(string macAddress, TrafficRule rule)
-    {
-        var normalized = rule.Normalize();
-        rules[NormalizeMac(macAddress)] = new DeviceLimiters(
-            normalized,
-            new TokenBucket(normalized.DownloadKiloBytesPerSecond * 1_000D, clockSeconds),
-            new TokenBucket(normalized.UploadKiloBytesPerSecond * 1_000D, clockSeconds));
-    }
+    public void SetRule(string macAddress, TrafficRule rule) =>
+        rules[NormalizeMac(macAddress)] = CreateLimiters(rule.Normalize());
+
+    public void SetDefaultLimits(int downloadKiloBytesPerSecond, int uploadKiloBytesPerSecond) =>
+        defaultRule = new TrafficRule(
+                false,
+                downloadKiloBytesPerSecond,
+                uploadKiloBytesPerSecond)
+            .Normalize();
 
     public TrafficRule GetRule(string macAddress) =>
         rules.TryGetValue(NormalizeMac(macAddress), out var limiters)
             ? limiters.Rule
-            : new TrafficRule(false, 0, 0);
+            : defaultRule;
 
     public bool RequiresInterception(string macAddress)
     {
@@ -90,9 +94,10 @@ public sealed class TrafficPolicy
 
     public bool ShouldForward(string macAddress, TrafficDirection direction, int byteCount)
     {
-        if (!rules.TryGetValue(NormalizeMac(macAddress), out var limiters))
+        var macKey = NormalizeMac(macAddress);
+        if (!rules.TryGetValue(macKey, out var limiters))
         {
-            return true;
+            limiters = GetDefaultLimiters(macKey);
         }
 
         if (limiters.Rule.PauseInternet)
@@ -151,6 +156,25 @@ public sealed class TrafficPolicy
         normalized = value;
         return true;
     }
+
+    private DeviceLimiters GetDefaultLimiters(string macKey)
+    {
+        var rule = defaultRule;
+        if (defaultLimiters.TryGetValue(macKey, out var limiters) && limiters.Rule == rule)
+        {
+            return limiters;
+        }
+
+        limiters = CreateLimiters(rule);
+        defaultLimiters[macKey] = limiters;
+        return limiters;
+    }
+
+    private DeviceLimiters CreateLimiters(TrafficRule rule) =>
+        new(
+            rule,
+            new TokenBucket(rule.DownloadKiloBytesPerSecond * 1_000D, clockSeconds),
+            new TokenBucket(rule.UploadKiloBytesPerSecond * 1_000D, clockSeconds));
 
     private sealed record DeviceLimiters(
         TrafficRule Rule,
